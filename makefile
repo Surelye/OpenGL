@@ -5,4 +5,4 @@ all:
 	$(CXX) $(CXXFILES) $(LIBS) -o hello_window
 
 clean:
-	rm hello_window *.o
+	rm hello_window

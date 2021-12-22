@@ -8,11 +8,32 @@
 #include <GLFW/glfw3.h>
 
 // Массив вершин в в нормализованном виде:
+// GLfloat vertices[] = {
+// 	-0.5f, -0.5f, 0.0f,
+// 	 0.5f, -0.5f, 0.0f,
+// 	 0.0f,  0.5f, 0.0f
+// };
+
+// Допустим, что мы хотим отрисовать прямоугольник. Мы можем сформировать прямоугольник при 
+// помощи двух треугольников. Но в таком случае произойдёт наложение вершин, что является 
+// нерациональным использованием ресурсов. Такую ситуацию можно обойти, используя EBO 
+// (ELEMENT BUFFER OBJECTS) или иначе IBO (INDEX BUFFER OBJECT). Эта структура хранит
+// индексы, которые OpenGL будет использовать для решения того, какую вершину отрисовывать. Это
+// называется отрисовка по индексам. Отрисуем только уникальные вершины и индексы для их 
+// отрисовки как треугольников.
+
 GLfloat vertices[] = {
-	-0.5f, -0.5f, 0.0f,
-	 0.5f, -0.5f, 0.0f,
-	 0.0f,  0.5f, 0.0f
+	0.5f,  0.5f, 0.0f, // Верхний правый угол
+	0.5f, -0.5f, 0.0f, // Нижний правый угол
+   -0.5f, -0.5f, 0.0f, // Нижний левый угол
+   -0.5f,  0.5f, 0.0f  // Верхний левый угол
 };
+
+GLuint indices[] = {
+	0, 1, 3, // Первый треугольник
+	1, 2, 3  // Второй треугольник
+};
+// Дальнейшая инициализация и работа происходит на строке 278
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode);
 
@@ -237,6 +258,9 @@ int main()
 	GLuint VAO;
 	glGenVertexArrays(1, &VAO);
 
+	GLuint EBO; // Создание EBO
+	glGenBuffers(1, &EBO); // Генерация буфера, аналогично VBO
+
 	// Для того, чтобы использовать VAO необходимо привязать VAO с помощью glBindVertexArray.
 	// Теперь мы должны настроить/привязать требуемые VBO и указатели на атрибуты, а
 	// в конце отвязать VAO для последующего использования. И теперь, каждый раз, когда 
@@ -247,12 +271,18 @@ int main()
 	// 2. Копируем нам массив вершин в буфер для OpenGL
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+	// 3. Копируем индексы в буфер для OpenGL
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 	// 3. Устанавливаем указатели на вершинные атрибуты
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (GLvoid*)0);
 	glEnableVertexAttribArray(0);
 	// 4. Отвязываем VAO
 	glBindVertexArray(0);
-	// Затем код продолжается в игровом цикле.
+	// Затем код продолжается в игровом цикле.	
+
+	// glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	// Отрисовка контуров фигур без заполнения области
 
 	// Игровой цикл.
 	while (!glfwWindowShouldClose(window))
@@ -268,7 +298,10 @@ int main()
 		// Вырисовка треугольника
 		glUseProgram(shaderProgram);
 		glBindVertexArray(VAO);
-		glDrawArrays(GL_TRIANGLES, 0, 3);
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+		// glDrawElements берёт индексы из текущего привязанного к GL_ELEMENT_ARRAY_BUFFER EBO
+		// Это означает, что мы должны каждый раз привязывать различные EBO. Но VAO умеет 
+		// хранить и EBO. 
 		glBindVertexArray(0);
 
 		// Меняем буферы местами.
