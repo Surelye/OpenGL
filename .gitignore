@@ -1,2 +1,6 @@
 Debug/**
 x64/**
+tests/
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
