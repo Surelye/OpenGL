@@ -1,6 +1,9 @@
 Debug/**
 x64/**
 tests/
+<<<<<<< HEAD
 *.vcxproj
 *.vcxproj.filters
 *.vcxproj.user
+=======
+>>>>>>> d3586a188007b9595767d8dfe82b5601b68cd6cf
