@@ -4,4 +4,4 @@ tests/
 *.vcxproj
 *.vcxproj.filters
 *.vcxproj.user
-
+*.vscode
