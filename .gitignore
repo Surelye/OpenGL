@@ -1,6 +1,7 @@
 Debug/**
 x64/**
 tests/
+pics/
 *.vcxproj
 *.vcxproj.filters
 *.vcxproj.user

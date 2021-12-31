@@ -1,5 +1,5 @@
 CXXFILES = hello_window.cpp
-LIBS = -lGL -lGLEW -lglfw
+LIBS = -lSOIL -lGL -lGLEW -lglfw
 
 all:
 	$(CXX) $(CXXFILES) $(LIBS) -o hello_window
