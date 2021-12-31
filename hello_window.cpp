@@ -143,16 +143,15 @@ class Shader
 // элементов float. Назначим красную, зелёную и синюю компоненты цветы каждой из вершин.
 
 GLfloat vertices[] = {
-	// Позиции	       // Цвета			 // Текстурные координаты
-	0.5f,  0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, // Верхний правый угол
-	0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, // Нижний правый угол
-   -0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, // Нижний левый угол
-   -0.5f,  0.5f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f  // Верхний левый угол
+	// Позиции	       		// Цвета			 	// Текстурные координаты
+	0.5f,  0.5f, 0.0f,		1.0f, 0.0f, 0.0f,		1.0f, 1.0f, // Верхний правый угол
+	0.5f, -0.5f, 0.0f, 		0.0f, 1.0f, 0.0f, 		1.0f, 0.0f, // Нижний правый угол
+   -0.5f, -0.5f, 0.0f, 		0.0f, 0.0f, 1.0f, 		0.0f, 0.0f, // Нижний левый угол
+   -0.5f,  0.5f, 0.0f, 		1.0f, 1.0f, 0.0f,		0.0f, 1.0f  // Верхний левый угол
 };
 // Теперь у нас много информации для передачи её вершинному шейдеру. Необходимо отредактировать
 // шейдер так, чтобы он получал и вершины и цвета.
 // После добавления дополнительных атрибутов необходимо вновь оповестить OpenGL о новом формате данных
-
 
 GLuint indices[] = {
 	0, 1, 3, // Первый треугольник
@@ -336,6 +335,8 @@ const char * uniformFragmentShaderSource =
 // т.к. она там не используется. Дальнейшее заполнение формы данными и её использование происходит
 // на строке 373 и дальше. 
 
+const GLuint WIDTH = 800, HEIGHT = 600;
+
 int main()
 {
 	// Инициализация GLFW
@@ -351,7 +352,7 @@ int main()
 	// Выключения возможности изменения размера окна.
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 		
-	GLFWwindow* window = glfwCreateWindow(800, 600, "LearnOpenGL", nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "LearnOpenGL", nullptr, nullptr);
 	if (window == nullptr)
 	{
 		std::cout << "Failed to create GLFW window." << std::endl;
@@ -585,6 +586,14 @@ int main()
 	// Установка указателей на атрибуты цвета
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
 	glEnableVertexAttribArray(1);
+
+	// После добавления дополнительных атрибутов (текстурные координаты) необходимо оповестить OpenGL
+	// о новом формате данных (также скорректировав значение шага прошлых двух атрибутов):
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (GLvoid*)(6 * sizeof(GLfloat)));
+	glEnableVertexAttribArray(2);
+	// Сначала необходимо создать все указатели на новые элементы в массиве, а только затем 
+	// отвязать VAO.
+
 	// 4. Отвязываем VAO
 	glBindVertexArray(0);
 	// Затем код продолжается в игровом цикле.	
@@ -600,22 +609,47 @@ int main()
 	Shader ourShader("/home/surelye/Desktop/repos/OpenGL/vertex_shader.vs", 
 					 "/home/surelye/Desktop/repos/OpenGL/fragment_shader.frag");
 
+	// Также как и на любой другой объект в OpenGL, на текстуры ссылаются идентификаторы. 
+	GLuint containerTexture, faceTexture;
+	glGenTextures(1, &containerTexture);
+	// Функция glGenTextures принимает в качестве первого аргумента количество текстур для генерации
+	// , а в качестве второго аргумента - массив GLuint, в котором будут храниться идентификаторы
+	// этих текстур. Также как любой другой объект мы привяжем его для того, чтобы функции, 
+	// использующие текстуры, знали, какую текстуру использовать.
+
+	// ТЕКСТУРНЫЙ БЛОК
+	// Почему же sampler2D переменная является uniform, если мы ей так и не присвоили никакое значение
+	// с помощью glUniform? С помощью glUniform1i мы можем присвоить значение местоположения текстурному
+	// сэмплеру для возможности использования нескольких текстур в одном фрагментном шейдере. 
+	// Местоположение текстуры чаще называется текстурным блоком. Текстурный блок по умолчанию - 0, 
+	// который означает активный текстурный блок. 
+	// Основная цель текстурных блоков - это обеспечение возможности использования более чем 1 текстуры
+	// в шейдере. Передавая текстурные блоки сэмплеру, мы можем привязывать несколько текстур за один 
+	// раз до тех пор, пока мы активируем соотносящиеся текстурные блоки. Также как и glBindTexure, 
+	// мы можем активировать текстуры с помощью glActivateTexture, передавая туда текстурный блок,
+	// который мы хотим использовать.
+	glActiveTexture(GL_TEXTURE0); // Активируем текстурный блок перед привязкой текстуры
+	// OpenGL поддерживает как минимум 16 текстурных блоков, которые можно получить через 
+	// GL_TEXTURE0 - GL_TEXTURE15. Они объявлены по порядку, поэтому обращаться к ним можно 
+	// следующим образом: GL_TEXTURE8 = GL_TEXTURE0 + 8. Для принятия другого сэмплера требуется
+	// изменить фрагментный шейдер.
+
+	// Для того, чтобы использовать вторую текстуру, надо добавить привязку текстур к 
+	// соответствующим текстурным блокам и указанием того, к каком сэмплеру относится каждый текстурный блок.
+	glBindTexture(GL_TEXTURE_2D, containerTexture);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
 	// Для загрузки изображения через SOIL будем использовать функцию SOIL_load_image:
 	int picWidth, picHeight;
 	unsigned char * image = SOIL_load_image("/home/surelye/Desktop/repos/OpenGL/pics/container.jpg", &picWidth, &picHeight, 0, SOIL_LOAD_RGB);
 	// Первый аргумент - это местоположение файла, второй и третий - это размеры изображения, они 
 	// понадобятся для генерации текстуры. Четвёртый аргумент - это количество каналов изображения.
 	// Последний аргумент сообщает SOIL, как ему загружать изображение: нам нужна только RGB информация.
-	// Результат будет храниться в массиве байтов.
+	// Результат будет храниться в массиве байтов.	
 
-	// Также как и на любой другой объект в OpenGL, на текстуры ссылаются идентификаторы. 
-	GLuint texture;
-	glGenTextures(1, &texture);
-	// Функция glGenTextures принимает в качестве первого аргумента количество текстур для генерации
-	// , а в качестве второго аргумента - массив GLuint, в котором будут храниться идентификаторы
-	// этих текстур. Также как любой другой объект мы привяжем его для того, чтобы функции, 
-	// использующие текстуры, знали, какую текстуру использовать. 
-	glBindTexture(GL_TEXTURE_2D, texture);
 	// После привязки текстуры мы можем начать генерировать данные текстуры, используя предварительно
 	// загруженное изображение. Текстуры генерируются с помощью glTexImage2D:
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, picWidth, picHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, image);
@@ -644,10 +678,19 @@ int main()
 	SOIL_free_image_data(image);
 	glBindTexture(GL_TEXTURE_2D, 0);
 
-	// После добавления дополнительных атрибутов (текстурные координаты) необходимо оповестить OpenGL
-	// о новом формате данных (также скорректировав значение шага прошлых двух атрибутов):
-	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (GLvoid*)(6 * sizeof(GLfloat)));
-	glEnableVertexAttribArray(2);
+	glGenTextures(1, &faceTexture);
+	glBindTexture(GL_TEXTURE_2D, faceTexture);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	image = SOIL_load_image("/home/surelye/Desktop/repos/OpenGL/pics/awesomeface.png", &picWidth, &picHeight, 0, SOIL_LOAD_RGB);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, picWidth, picHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, image);
+	glGenerateMipmap(GL_TEXTURE_2D);
+	SOIL_free_image_data(image);
+	glBindTexture(GL_TEXTURE_2D, 0);
+
 	// Далее идёт модификация вершинного и фрагментного шейдера, а затем: 
 	// Осталось только привязать текстуру перед вызовом glDrawElements в игровом цикле, и она 
 	// автоматически будет передана сэмплеру фрагментного шейдера.
@@ -663,11 +706,19 @@ int main()
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		glBindTexture(GL_TEXTURE_2D, texture);
-
 		// Активируем шейдерную программу
 		// glUseProgram(shaderProgram);
 		ourShader.Use();
+
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, containerTexture);
+		glUniform1i(glGetUniformLocation(ourShader.Program, "ourTexture1"), 0);
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, faceTexture);
+		glUniform1i(glGetUniformLocation(ourShader.Program, "ourTexture2"), 1);
+		// glUniform1i используется для того, чтобы установить позицию текстурного блока в uniform
+		// sampler. Устанавливая их через glUniform1i мы будем уверены, что uniform sampler 
+		// соотносится с правильным текстурным блоком. 
 
 		// Обновляем цвет формы
 		// GLfloat timeValue = glfwGetTime();
